@@ -1,69 +1,88 @@
-# tga-js
+# Targadactyl
 
-![Browser](https://img.shields.io/badge/env-browser-blue.svg)
-![](https://img.shields.io/david/vthibault/tga.js.svg)
-![](https://img.shields.io/snyk/vulnerabilities/github/vthibault/tga.js.svg)
+**A .tga file loader for Deno.** (Forked from
+[tga-js](https://github.com/vthibault/tga.js))
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
 
-**tga-js** is a tga file loader written in JavaScript, working in the browser environment. It provides a simple and really fast solution for loading TGA file format.
+## Usage Examples
 
-> Lot of games are using TGA files to store textures.
-> So, since browsers try to bring games in the web it can be a good idea to have a TGA loader _(actually a better idea to use another smaller file format)_.
+Instantiate the `TgaLoader` class and pass an `Uint8ClampedArray` of image data
+to the `load()` method **before** attempting to get the canvas, image data or
+header information.
 
----
+A `TgaLoaderReferenceError` will be thrown by `TgaLoader.getImageData()`,
+`TgaLoader.getCanvas()` and `TgaLoader.header` if the TGA file has not loaded
+prior to the method call.
 
-## 🔗 Used by :
+### Loading a Local .tga File
 
-- [ThreeJS](https://threejs.org/) 3D Engine
-- [BabylonJS](https://www.babylonjs.com/) 3D Engine
-
----
-
-## 🚀 Installation
-
-Install with [yarn](https://yarnpkg.com):
-
-```sh
-$ yarn add tga-js
-```
-
-Or install using [npm](https://npmjs.org):
-
-```sh
-$ npm i tga-js
-```
-
----
-
-## 📖 Usage
-
-#### Loading a remote tga file.
-
-```js
-import TgaLoader from 'tga-js';
-
-const tga = new TgaLoader();
-tga.open('./assets/resource.tga', () => {
-  document.body.appendChild(tga.getCanvas());
-});
-```
-
-#### Loading a tga from buffer.
-
-```js
-import TgaLoader from 'tga-js';
+```ts
+import TgaLoader from "https://deno.land/x/targadactyl@1.0.0/mod.ts";
 
 const tga = new TgaLoader();
 
-// Your own function returning a buffer from cache/memory/..
-const buffer = getImageBufferFromCache('resource/data');
-
-tga.load(new UInt8Array(buffer));
-document.body.appendChild(tga.getCanvas());
+tga.load(
+  await tga.open("./test/test.tga"),
+);
 ```
 
-#### Get data-uri as output
+### Loading a Remote .tga File
 
-```js
-tga.getDataURL('image/png');
+```ts
+import TgaLoader from "https://deno.land/x/targadactyl@1.0.0/mod.ts";
+
+const tga = new TgaLoader();
+
+const res = await fetch(
+  "https://raw.githubusercontent.com/jasonjgardner/targadactyl/main/test/test.tga",
+);
+const buffer = res.arrayBuffer();
+
+tga.load(
+  new Uint8ClampedArray(buffer),
+);
+```
+
+### Serving a .tga File with [_Fresh_](https://fresh.deno.dev)
+
+```ts
+import { decode } from "https://deno.land/std@0.156.0/encoding/base64url.ts";
+import {
+  TgaLoader,
+  TgaLoaderError,
+} from "https://deno.land/x/targadactyl@1.0.0/mod.ts";
+
+export const handler = async (
+  _req: Request,
+  ctx: HandlerContext,
+): Promise<Response> => {
+  try {
+    const tga = new TgaLoader();
+
+    tga.load(
+      await tga.open(`./img/${ctx.params.tga}`),
+    );
+
+    const contentType = "image/png";
+
+    return new Response(
+      decode(tga.getDataURL(contentType)),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": contentType,
+        },
+      },
+    );
+  } catch (err) {
+    if (err instanceof TgaLoaderError) {
+      return new Response(`Failed loading .tga image file: "${err}"`, {
+        status: 404,
+      });
+    }
+
+    return new Response("An unknown error has occurred.", { status: 500 });
+  }
+};
 ```
