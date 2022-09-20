@@ -37,7 +37,7 @@ const tga = new TgaLoader();
 const res = await fetch(
   "https://raw.githubusercontent.com/jasonjgardner/targadactyl/main/test/test.tga",
 );
-const buffer = res.arrayBuffer();
+const buffer = await res.arrayBuffer();
 
 tga.load(
   new Uint8ClampedArray(buffer),
