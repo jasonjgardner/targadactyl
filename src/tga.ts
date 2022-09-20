@@ -1,41 +1,5 @@
+import { type TgaHeader, TgaOrigin, TgaType } from "./types.ts";
 import { createCanvas, type ImageData } from "../deps.ts";
-
-enum TgaType {
-  TYPE_NO_DATA = 0,
-  TYPE_INDEXED = 1,
-  TYPE_RGB = 2,
-  TYPE_GREY = 3,
-  TYPE_RLE_INDEXED = 9,
-  TYPE_RLE_RGB = 10,
-  TYPE_RLE_GREY = 11,
-}
-
-enum TgaOrigin {
-  ORIGIN_BOTTOM_LEFT = 0x00,
-  ORIGIN_BOTTOM_RIGHT = 0x01,
-  ORIGIN_TOP_LEFT = 0x02,
-  ORIGIN_TOP_RIGHT = 0x03,
-  ORIGIN_SHIFT = 0x04,
-  ORIGIN_MASK = 0x30,
-}
-
-interface TgaHeader {
-  idLength: number;
-  colorMapType: TgaType;
-  imageType: TgaType;
-  colorMapIndex: number;
-  colorMapLength: number;
-  colorMapDepth: number;
-  offsetX: number;
-  offsetY: number;
-  width: number;
-  height: number;
-  pixelDepth: 8 | 16 | 24 | 32;
-  flags: number;
-  hasEncoding: boolean;
-  hasColorMap: boolean;
-  isGreyColor: boolean;
-}
 
 export class TgaLoaderError extends Error {
   constructor(msg: string) {
@@ -408,7 +372,7 @@ export class TgaLoader {
   /**
    * Return an ImageData object from a TGA file
    */
-  getImageData(imageData?: ImageData): ImageData {
+  getImageData(imageData?: ImageData): Uint8ClampedArray {
     if (!this.header || !this.imageData) {
       throw new TgaLoaderReferenceError("Can not get image data.");
     }
@@ -464,23 +428,20 @@ export class TgaLoader {
     ] as const;
 
     if (pixelDepth === 8) {
-      imageData.data = isGreyColor
+      return isGreyColor
         ? TgaLoader.getImageDataGrey8bits(...params)
         : TgaLoader.getImageData8bits(...params);
-      return imageData;
     }
 
     if (pixelDepth === 16) {
-      imageData.data = isGreyColor
+      return isGreyColor
         ? TgaLoader.getImageDataGrey16bits(...params)
         : TgaLoader.getImageData16bits(...params);
-      return imageData;
     }
 
-    imageData.data = pixelDepth === 24
+    return pixelDepth === 24
       ? TgaLoader.getImageData24bits(...params)
       : TgaLoader.getImageData32bits(...params);
-    return imageData;
   }
 
   /**
@@ -499,8 +460,21 @@ export class TgaLoader {
     const ctx = canvas.getContext("2d");
 
     const imageData = ctx.createImageData(width, height);
+    const data = this.getImageData(imageData);
 
-    ctx.putImageData(this.getImageData(imageData), 0, 0);
+    ctx.putImageData(
+      {
+        data,
+        width,
+        height,
+      },
+      0,
+      0,
+      0,
+      0,
+      width,
+      height,
+    );
 
     return canvas;
   }
@@ -508,7 +482,7 @@ export class TgaLoader {
   /**
    * Return a dataURI of the TGA file (default: image/png)
    */
-  getDataURL(type?: string | null): string {
-    return this.getCanvas().toDataURL(type || "image/png");
+  getDataURL(type?: "image/png" | "image/jpeg"): string {
+    return this.getCanvas().toDataURL(type ?? "image/png");
   }
 }
