@@ -3,7 +3,7 @@
 **A .tga file loader for Deno.** (Forked from
 [tga-js](https://github.com/vthibault/tga.js))
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
+![GitHub repository license](https://img.shields.io/github/license/jasonjgardner/targadactyl?style=for-the-badge)
 
 ## Usage Examples
 
@@ -17,6 +17,8 @@ prior to the method call.
 
 ### Loading a Local .tga File
 
+(Requires read permission.)
+
 ```ts
 import TgaLoader from "https://deno.land/x/targadactyl@1.0.1/mod.ts";
 
@@ -29,18 +31,16 @@ tga.load(
 
 ### Loading a Remote .tga File
 
+(Requires network permission.)
+
 ```ts
 import TgaLoader from "https://deno.land/x/targadactyl@1.0.1/mod.ts";
 
 const tga = new TgaLoader();
-
-const res = await fetch(
-  "https://raw.githubusercontent.com/jasonjgardner/targadactyl/main/test/test.tga",
-);
-const buffer = await res.arrayBuffer();
+const src = new URL("https://raw.githubusercontent.com/jasonjgardner/targadactyl/main/test/test.tga");
 
 tga.load(
-  new Uint8ClampedArray(buffer),
+  await tga.fetch(src);
 );
 ```
 

@@ -3,9 +3,10 @@ import {
   assertMatch,
   assertNotEquals,
   assertObjectMatch,
+  assertRejects,
 } from "https://deno.land/std@0.156.0/testing/asserts.ts";
 import { type TgaHeader, TgaType } from "./types.ts";
-import { TgaLoader } from "../mod.ts";
+import { TgaLoader, TgaLoaderError } from "../mod.ts";
 
 const expects: Record<string, TgaHeader> = {
   "./test/test.tga": {
@@ -95,7 +96,9 @@ const expects: Record<string, TgaHeader> = {
   },
 };
 
-Deno.test("Open and load a TGA file to inspect its header data.", async () => {
+Deno.test("Open and load a TGA file to inspect its header data.", {
+  permissions: { read: true },
+}, async () => {
   for (const testFile in expects) {
     const tga = new TgaLoader();
     tga.load(await tga.open(testFile));
@@ -108,15 +111,14 @@ Deno.test("Open and load a TGA file to inspect its header data.", async () => {
   }
 });
 
-Deno.test("Fetch and load a TGA file to inspect its header data", async () => {
+Deno.test("Fetch and load a TGA file to inspect its header data", {
+  permissions: { read: true, net: true },
+}, async () => {
   for (const testFile in expects) {
     const tga = new TgaLoader();
 
-    const res = await fetch(pathToFileURL(testFile));
-    const buffer = await res.arrayBuffer();
-
     tga.load(
-      new Uint8ClampedArray(buffer),
+      await tga.fetch(pathToFileURL(testFile)),
     );
 
     assertNotEquals(tga.imageData, undefined, testFile);
@@ -125,4 +127,24 @@ Deno.test("Fetch and load a TGA file to inspect its header data", async () => {
 
     assertMatch(tga.getDataURL(), /^data:image\/(png|jpeg);base64,.+/gi);
   }
+});
+
+const src = pathToFileURL(Object.keys(expects)[0]);
+
+Deno.test("Throw error when lacking Deno permissions", {
+  permissions: {
+    read: false,
+    net: false,
+  },
+}, () => {
+  assertRejects(
+    async () => {
+      const tga = new TgaLoader();
+
+      tga.load(
+        await tga.fetch(src),
+      );
+    },
+    TgaLoaderError,
+  );
 });

@@ -1,29 +1,37 @@
 import { type TgaHeader, TgaOrigin, TgaType } from "./types.ts";
-import { createCanvas, type ImageData } from "../deps.ts";
+import {
+  createCanvas,
+  type EmulatedCanvas2D,
+  type ImageData,
+} from "../deps.ts";
+import { TgaLoaderError, TgaLoaderReferenceError } from "./errors.ts";
 
-export class TgaLoaderError extends Error {
-  constructor(msg: string) {
-    super(`Failed loading TGA: "${msg}"`);
-  }
-}
-
-export class TgaLoaderReferenceError extends ReferenceError {
-  constructor(msg: string) {
-    super(`TGA file data has not been initialized. ${msg}`.trim());
-  }
-}
-
+/**
+ * Loads local or remote TGA files into a canvas rendering context.
+ * @see https://www.gamers.org/dEngine/quake3/TGA.txt TGA file specs
+ * @see https://github.com/vthibault/tga.js Original source. JavaScript TGA loader
+ * @uses createCanvas https://deno.land/x/canvas@v1.4.1/mod.ts?s=createCanvas
+ */
 export class TgaLoader {
+  /**
+   * Array containing TGA image data
+   */
   imageData?: Uint8ClampedArray;
 
+  /**
+   * Array containing TGA image color data
+   */
   palette?: Uint8ClampedArray;
 
+  /**
+   * TGA file header information
+   */
   _header?: TgaHeader;
 
   /**
-   * Check the header of TGA file to detect errors
-   *
-   * @throws TgaLoaderError
+   * Setter method for TGA header data. Checks the header of TGA file to detect errors before setting `TgaLoader._header` property
+   * @param {TgaHeader} header TGA file information to validate and use
+   * @throws {TgaLoaderError} Thrown if TGA header is invalid or incomplete
    */
   set header(header: TgaHeader) {
     if (!header || header.imageType === TgaType.TYPE_NO_DATA) {
@@ -67,7 +75,12 @@ export class TgaLoader {
     this._header = header;
   }
 
-  get header() {
+  /**
+   * Getter method for accessing header information
+   * @see TgaLoader.load
+   * @throws {TgaLoaderReferenceError} Thrown if method is called prior to loading TGA data
+   */
+  get header(): TgaHeader {
     if (!this._header) {
       throw new TgaLoaderReferenceError("Can not get TGA header data.");
     }
@@ -76,9 +89,15 @@ export class TgaLoader {
   }
 
   /**
-   * Decode RLE compression
+   * Decode compressed TGA file
+   *
+   * @param data TGA image data
+   * @param offset Byte index offset for compression decoding
+   * @param pixelSize Input image size
+   * @param outputSize Output image size
+   * @returns {Uint8ClampedArray} Decoded compressed TGA data
    */
-  static decodeRLE(
+  private decodeRLE(
     data: Uint8ClampedArray,
     offset: number,
     pixelSize: number,
@@ -125,22 +144,34 @@ export class TgaLoader {
   }
 
   /**
-   * Return a ImageData object from a TGA file (8bits)
+   * Copy image data from 8 bit RGB TGA file
+   *
+   * @param imageData Canvas data container
+   * @param indexes TGA image data color indexes
+   * @param colorMap Color map data
+   * @param width Image width
+   * @param yStart Y-axis start position of pixel data to copy
+   * @param yStep The number of pixels offset per iteration over the Y-axis
+   * @param yEnd Y-axis end position of pixel data to copy
+   * @param xStart X-axis start position of pixel data to copy
+   * @param xStep The number of pixels offset per iteration over the X-axis
+   * @param xEnd X-axis end position of pixel data to copy
+   * @returns {Uint8ClampedArray} Image data copied from TGA file
    */
-  static getImageData8bits(
+  private getImageData8bits(
     imageData: Uint8ClampedArray,
     indexes: Uint8ClampedArray,
     colorMap: Uint8ClampedArray,
     width: number,
-    y_start: number,
-    y_step: number,
-    y_end: number,
-    x_start: number,
-    x_step: number,
-    x_end: number,
+    yStart: number,
+    yStep: number,
+    yEnd: number,
+    xStart: number,
+    xStep: number,
+    xEnd: number,
   ): Uint8ClampedArray {
-    for (let i = 0, y = y_start; y !== y_end; y += y_step) {
-      for (let x = x_start; x !== x_end; x += x_step, i++) {
+    for (let i = 0, y = yStart; y !== yEnd; y += yStep) {
+      for (let x = xStart; x !== xEnd; x += xStep, i++) {
         const color = indexes[i];
         const offset = (x + width * y) * 4;
         const idx = color * 3;
@@ -156,22 +187,34 @@ export class TgaLoader {
   }
 
   /**
-   * Return a ImageData object from a TGA file (16bits)
+   * Copy image data from 16 bit RGB TGA file
+   *
+   * @param imageData Canvas data container
+   * @param pixels TGA image data
+   * @param _colorMap Color map data (unused)
+   * @param width Image width
+   * @param yStart Y-axis start position of pixel data to copy
+   * @param yStep The number of pixels offset per iteration over the Y-axis
+   * @param yEnd Y-axis end position of pixel data to copy
+   * @param xStart X-axis start position of pixel data to copy
+   * @param xStep The number of pixels offset per iteration over the X-axis
+   * @param xEnd X-axis end position of pixel data to copy
+   * @returns {Uint8ClampedArray} Image data copied from TGA file
    */
-  static getImageData16bits(
+  private getImageData16bits(
     imageData: Uint8ClampedArray,
     pixels: Uint8ClampedArray,
     _colorMap: Uint8ClampedArray,
     width: number,
-    y_start: number,
-    y_step: number,
-    y_end: number,
-    x_start: number,
-    x_step: number,
-    x_end: number,
+    yStart: number,
+    yStep: number,
+    yEnd: number,
+    xStart: number,
+    xStep: number,
+    xEnd: number,
   ): Uint8ClampedArray {
-    for (let i = 0, y = y_start; y !== y_end; y += y_step) {
-      for (let x = x_start; x !== x_end; x += x_step, i += 2) {
+    for (let i = 0, y = yStart; y !== yEnd; y += yStep) {
+      for (let x = xStart; x !== xEnd; x += xStep, i += 2) {
         const color = pixels[i + 0] | (pixels[i + 1] << 8);
         const offset = (x + width * y) * 4;
         imageData[offset] = (color & 0x7c00) >> 7;
@@ -185,22 +228,34 @@ export class TgaLoader {
   }
 
   /**
-   * Return a ImageData object from a TGA file (24bits)
+   * Copy image data from 24 bit RGB TGA file
+   *
+   * @param imageData Canvas data container
+   * @param pixels TGA image data
+   * @param _colorMap Color map data (unused)
+   * @param width Image width
+   * @param yStart Y-axis start position of pixel data to copy
+   * @param yStep The number of pixels offset per iteration over the Y-axis
+   * @param yEnd Y-axis end position of pixel data to copy
+   * @param xStart X-axis start position of pixel data to copy
+   * @param xStep The number of pixels offset per iteration over the X-axis
+   * @param xEnd X-axis end position of pixel data to copy
+   * @returns {Uint8ClampedArray} Image data copied from TGA file
    */
-  static getImageData24bits(
+  private getImageData24bits(
     imageData: Uint8ClampedArray,
     pixels: Uint8ClampedArray,
     _colorMap: Uint8ClampedArray,
     width: number,
-    y_start: number,
-    y_step: number,
-    y_end: number,
-    x_start: number,
-    x_step: number,
-    x_end: number,
+    yStart: number,
+    yStep: number,
+    yEnd: number,
+    xStart: number,
+    xStep: number,
+    xEnd: number,
   ): Uint8ClampedArray {
-    for (let i = 0, y = y_start; y !== y_end; y += y_step) {
-      for (let x = x_start; x !== x_end; x += x_step, i += 3) {
+    for (let i = 0, y = yStart; y !== yEnd; y += yStep) {
+      for (let x = xStart; x !== xEnd; x += xStep, i += 3) {
         const offset = (x + width * y) * 4;
         imageData[offset + 3] = 255;
         imageData[offset + 2] = pixels[i];
@@ -213,22 +268,34 @@ export class TgaLoader {
   }
 
   /**
-   * Return a ImageData object from a TGA file (32bits)
+   * Copy image data from 32 bit RGB TGA file
+   *
+   * @param imageData Canvas data container
+   * @param pixels TGA image data
+   * @param _colorMap Color map data (unused)
+   * @param width Image width
+   * @param yStart Y-axis start position of pixel data to copy
+   * @param yStep The number of pixels offset per iteration over the Y-axis
+   * @param yEnd Y-axis end position of pixel data to copy
+   * @param xStart X-axis start position of pixel data to copy
+   * @param xStep The number of pixels offset per iteration over the X-axis
+   * @param xEnd X-axis end position of pixel data to copy
+   * @returns {Uint8ClampedArray} Image data copied from TGA file
    */
-  static getImageData32bits(
+  private getImageData32bits(
     imageData: Uint8ClampedArray,
     pixels: Uint8ClampedArray,
     _colorMap: Uint8ClampedArray,
     width: number,
-    y_start: number,
-    y_step: number,
-    y_end: number,
-    x_start: number,
-    x_step: number,
-    x_end: number,
+    yStart: number,
+    yStep: number,
+    yEnd: number,
+    xStart: number,
+    xStep: number,
+    xEnd: number,
   ): Uint8ClampedArray {
-    for (let i = 0, y = y_start; y !== y_end; y += y_step) {
-      for (let x = x_start; x !== x_end; x += x_step, i += 4) {
+    for (let i = 0, y = yStart; y !== yEnd; y += yStep) {
+      for (let x = xStart; x !== xEnd; x += xStep, i += 4) {
         const offset = (x + width * y) * 4;
         imageData[offset + 2] = pixels[i];
         imageData[offset + 1] = pixels[i + 1];
@@ -241,22 +308,34 @@ export class TgaLoader {
   }
 
   /**
-   * Return a ImageData object from a TGA file (8bits grey)
+   * Copy image data from 8 bit gray TGA file
+   *
+   * @param imageData Canvas data container
+   * @param pixels TGA image data
+   * @param _colorMap Color map data (unused)
+   * @param width Image width
+   * @param yStart Y-axis start position of pixel data to copy
+   * @param yStep The number of pixels offset per iteration over the Y-axis
+   * @param yEnd Y-axis end position of pixel data to copy
+   * @param xStart X-axis start position of pixel data to copy
+   * @param xStep The number of pixels offset per iteration over the X-axis
+   * @param xEnd X-axis end position of pixel data to copy
+   * @returns {Uint8ClampedArray} Image data copied from TGA file
    */
-  static getImageDataGrey8bits(
+  private getImageDataGrey8bits(
     imageData: Uint8ClampedArray,
     pixels: Uint8ClampedArray,
     _colorMap: Uint8ClampedArray,
     width: number,
-    y_start: number,
-    y_step: number,
-    y_end: number,
-    x_start: number,
-    x_step: number,
-    x_end: number,
+    yStart: number,
+    yStep: number,
+    yEnd: number,
+    xStart: number,
+    xStep: number,
+    xEnd: number,
   ): Uint8ClampedArray {
-    for (let i = 0, y = y_start; y !== y_end; y += y_step) {
-      for (let x = x_start; x !== x_end; x += x_step, i++) {
+    for (let i = 0, y = yStart; y !== yEnd; y += yStep) {
+      for (let x = xStart; x !== xEnd; x += xStep, i++) {
         const color = pixels[i];
         const offset = (x + width * y) * 4;
         imageData[offset] = color;
@@ -270,22 +349,34 @@ export class TgaLoader {
   }
 
   /**
-   * Return a ImageData object from a TGA file (16bits grey)
+   * Copy image data from 16 bit gray TGA file
+   *
+   * @param imageData Canvas data container
+   * @param pixels TGA image data
+   * @param _colorMap Color map data (unused)
+   * @param width Image width
+   * @param yStart Y-axis start position of pixel data to copy
+   * @param yStep The number of pixels offset per iteration over the Y-axis
+   * @param yEnd Y-axis end position of pixel data to copy
+   * @param xStart X-axis start position of pixel data to copy
+   * @param xStep The number of pixels offset per iteration over the X-axis
+   * @param xEnd X-axis end position of pixel data to copy
+   * @returns {Uint8ClampedArray} Image data copied from TGA file
    */
-  static getImageDataGrey16bits(
+  private getImageDataGrey16bits(
     imageData: Uint8ClampedArray,
     pixels: Uint8ClampedArray,
     _colorMap: Uint8ClampedArray,
     width: number,
-    y_start: number,
-    y_step: number,
-    y_end: number,
-    x_start: number,
-    x_step: number,
-    x_end: number,
+    yStart: number,
+    yStep: number,
+    yEnd: number,
+    xStart: number,
+    xStep: number,
+    xEnd: number,
   ): Uint8ClampedArray {
-    for (let i = 0, y = y_start; y !== y_end; y += y_step) {
-      for (let x = x_start; x !== x_end; x += x_step, i += 2) {
+    for (let i = 0, y = yStart; y !== yEnd; y += yStep) {
+      for (let x = xStart; x !== xEnd; x += xStep, i += 2) {
         const offset = (x + width * y) * 4;
         imageData[offset] = pixels[i];
         imageData[offset + 1] = pixels[i];
@@ -297,17 +388,108 @@ export class TgaLoader {
     return imageData;
   }
 
-  async open(path: string) {
+  /**
+   * Open remote TGA file
+   *
+   * @example ```ts
+   * const tga = new TgaLoader();
+   * const src = new URL("https://raw.githubusercontent.com/jasonjgardner/targadactyl/main/test/test.tga");
+   *
+   * try {
+   *  tga.load(
+   *    await tga.fetch(src)
+   *  );
+   * } catch (err) {
+   *  // Catch Fetch API errors or TgaLoaderError
+   * }
+   *
+   * // TGA data has been initialized! 🍾
+   * ```
+   *
+   * @param uri URL of TGA file
+   * @throws {TgaLoaderError} Thrown if Deno does not have permission to access URL over network. Read permissions are required for file protocol URLs
+   * @returns TGA data
+   */
+  async fetch(uri: URL): Promise<Uint8ClampedArray> {
+    if (uri.protocol === "file:") {
+      const readPermission = await Deno.permissions.query({
+        name: "read",
+        path: uri.pathname.substring(1),
+      });
+      if (readPermission.state !== "granted") {
+        throw new TgaLoaderError(
+          `Can not load file without read permission to path: "${uri.pathname}"`,
+        );
+      }
+    } else {
+      const netPermission = await Deno.permissions.query({
+        name: "net",
+        host: uri.host,
+      });
+
+      if (netPermission.state !== "granted") {
+        throw new TgaLoaderError(
+          `Can not fetch file without network access permission to host: "${uri.host}"`,
+        );
+      }
+    }
+    const res = await fetch(
+      uri.href,
+    );
+    return new Uint8ClampedArray(await res.arrayBuffer());
+  }
+
+  /**
+   * Open local TGA file. Requires read permissions.
+   *
+   * @example ```ts
+   * const tga = new TgaLoader();
+   * const src = "./test.tga";
+   *
+   * try {
+   *  tga.load(
+   *    await tga.open(src)
+   *  );
+   * } catch (err) {
+   *  // Catch Deno read errors or TgaLoaderError
+   * }
+   *
+   * // TGA data has been initialized! 🍾
+   * ```
+   * @param path Filesystem path to .tga file
+   * @throws {TgaLoaderError} Thrown if Deno does not have read permission to the path specified
+   * @returns TGA data
+   */
+  async open(path: string): Promise<Uint8ClampedArray> {
+    const readPermission = await Deno.permissions.query({ name: "read", path });
+    if (readPermission.state !== "granted") {
+      throw new TgaLoaderError(
+        `Can not load file without read permission to path: "${path}"`,
+      );
+    }
     return new Uint8ClampedArray(await Deno.readFile(path));
   }
 
   /**
-   * Load and parse a TGA file
+   * Parse `Uint8ClampedArray` of TGA data
+   *
+   * @example ```ts
+   * const tga = new TgaLoader();
+   * const file = "./test.tga";
+   * tga.load(
+   *  await tga.open(file)
+   * );
+   *
+   * // TGA data has been initialized! 🍾
+   * ```
+   *
+   * @param {Uint8ClampedArray} data TGA data
+   * @throws {TGALoaderError} Thrown if `data.length` is not long enough to contain TGA data
+   * @returns {TgaLoader} Returns instance of self used for method chaining
    */
-  load(data: Uint8ClampedArray) {
+  load(data: Uint8ClampedArray): TgaLoader {
     let offset = 0;
 
-    // Not enough data to contain header ?
     if (data.length < 0x12) {
       throw new TgaLoaderError("Not enough data to contain header");
     }
@@ -360,19 +542,25 @@ export class TgaLoader {
     const pixelTotal = imageSize * pixelSize;
 
     const imageData = (header.hasEncoding)
-      ? TgaLoader.decodeRLE(data, offset, pixelSize, pixelTotal)
+      ? this.decodeRLE(data, offset, pixelSize, pixelTotal)
       : data.subarray(
         offset,
         offset + (header.hasColorMap ? imageSize : pixelTotal),
       );
 
     this.imageData = imageData;
+
+    return this;
   }
 
   /**
-   * Return an ImageData object from a TGA file
+   * Get `ImageData` interface for the TGA
+   * @todo Use header offsets in determining origin. ([See TODO in tga-js source.](https://github.com/vthibault/tga.js/blob/4877572f33058053adb3a892684fb3f822885bd9/src/tga.js#L516))
+   * @param imageData TGA pixel data interface
+   * @throws {TgaLoaderReferenceError} Thrown when method has been called without loading data via the class's `load` method
+   * @returns {Uint8ClampedArray} TGA byte data
    */
-  getImageData(imageData?: ImageData): Uint8ClampedArray {
+  private getImageData(imageData?: ImageData): Uint8ClampedArray {
     if (!this.header || !this.imageData) {
       throw new TgaLoaderReferenceError("Can not get image data.");
     }
@@ -386,68 +574,70 @@ export class TgaLoader {
       imageData = ctx.createImageData(width, height);
     }
 
-    let y_start = height - 1;
-    let y_step = -1;
-    let y_end = -1;
+    let yStart = height - 1;
+    let yStep = -1;
+    let yEnd = -1;
 
-    let x_start = width - 1;
-    let x_step = -1;
-    let x_end = -1;
+    let xStart = width - 1;
+    let xStep = -1;
+    let xEnd = -1;
 
     if (
       origin === TgaOrigin.ORIGIN_TOP_LEFT ||
       origin === TgaOrigin.ORIGIN_TOP_RIGHT
     ) {
-      y_start = 0;
-      y_step = 1;
-      y_end = height;
+      yStart = 0;
+      yStep = 1;
+      yEnd = height;
     }
 
     if (
       origin === TgaOrigin.ORIGIN_TOP_LEFT ||
       origin === TgaOrigin.ORIGIN_BOTTOM_LEFT
     ) {
-      x_start = 0;
-      x_step = 1;
-      x_end = width;
+      xStart = 0;
+      xStep = 1;
+      xEnd = width;
     }
-
-    // TODO: use this.header.offsetX and this.header.offsetY ?
 
     const params = [
       imageData.data,
       this.imageData,
       <Uint8ClampedArray> this.palette,
       width,
-      y_start,
-      y_step,
-      y_end,
-      x_start,
-      x_step,
-      x_end,
+      yStart,
+      yStep,
+      yEnd,
+      xStart,
+      xStep,
+      xEnd,
     ] as const;
 
     if (pixelDepth === 8) {
       return isGreyColor
-        ? TgaLoader.getImageDataGrey8bits(...params)
-        : TgaLoader.getImageData8bits(...params);
+        ? this.getImageDataGrey8bits(...params)
+        : this.getImageData8bits(...params);
     }
 
     if (pixelDepth === 16) {
       return isGreyColor
-        ? TgaLoader.getImageDataGrey16bits(...params)
-        : TgaLoader.getImageData16bits(...params);
+        ? this.getImageDataGrey16bits(...params)
+        : this.getImageData16bits(...params);
     }
 
     return pixelDepth === 24
-      ? TgaLoader.getImageData24bits(...params)
-      : TgaLoader.getImageData32bits(...params);
+      ? this.getImageData24bits(...params)
+      : this.getImageData32bits(...params);
   }
 
   /**
-   * Return a canvas with the TGA render on it
+   * Returns a canvas containing the TGA image
+   * @uses createCanvas https://doc.deno.land/https://deno.land/x/canvas@v1.4.1/mod.ts/~/createCanvas
+   * @see https://doc.deno.land/https://deno.land/x/canvas@v1.4.1/mod.ts Module docs
+   * @throws {TgaLoaderReferenceError} Thrown if image dimensions can not be found in TGA header data.
+   * @returns {EmulatedCanvas2D} Canvas containing TGA data
    */
-  getCanvas() {
+  getCanvas(): EmulatedCanvas2D {
     if (!this.header) {
       throw new TgaLoaderReferenceError(
         "Can not get canvas without width and height from TGA header.",
@@ -480,7 +670,10 @@ export class TgaLoader {
   }
 
   /**
-   * Return a dataURI of the TGA file (default: image/png)
+   * Gets TGA image as Base64-encoded data URL
+   * @uses TgaLoader.getCanvas
+   * @param type PNG or JPEG MIME type to use
+   * @returns {string} Returns TGA image as base64-encoded data URI
    */
   getDataURL(type?: "image/png" | "image/jpeg"): string {
     return this.getCanvas().toDataURL(type ?? "image/png");
