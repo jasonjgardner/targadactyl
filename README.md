@@ -18,7 +18,7 @@ prior to the method call.
 ### Loading a Local .tga File
 
 ```ts
-import TgaLoader from "https://deno.land/x/targadactyl@1.0.0/mod.ts";
+import TgaLoader from "https://deno.land/x/targadactyl@1.0.1/mod.ts";
 
 const tga = new TgaLoader();
 
@@ -30,7 +30,7 @@ tga.load(
 ### Loading a Remote .tga File
 
 ```ts
-import TgaLoader from "https://deno.land/x/targadactyl@1.0.0/mod.ts";
+import TgaLoader from "https://deno.land/x/targadactyl@1.0.1/mod.ts";
 
 const tga = new TgaLoader();
 
@@ -44,45 +44,11 @@ tga.load(
 );
 ```
 
-### Serving a .tga File with [_Fresh_](https://fresh.deno.dev)
+### Serving a .tga File
 
-```ts
-import { decode } from "https://deno.land/std@0.156.0/encoding/base64url.ts";
-import {
-  TgaLoader,
-  TgaLoaderError,
-} from "https://deno.land/x/targadactyl@1.0.0/mod.ts";
+> ![Logo .tga file served by Deno](https://targadactyl-serve.deno.dev/)\
+> 🎉\
+> Serving [`./test/test.tga`](./test/test.tga) via
+> [deno.dev](https://targadactyl-serve.deno.dev)
 
-export const handler = async (
-  _req: Request,
-  ctx: HandlerContext,
-): Promise<Response> => {
-  try {
-    const tga = new TgaLoader();
-
-    tga.load(
-      await tga.open(`./img/${ctx.params.tga}`),
-    );
-
-    const contentType = "image/png";
-
-    return new Response(
-      decode(tga.getDataURL(contentType)),
-      {
-        status: 200,
-        headers: {
-          "Content-Type": contentType,
-        },
-      },
-    );
-  } catch (err) {
-    if (err instanceof TgaLoaderError) {
-      return new Response(`Failed loading .tga image file: "${err}"`, {
-        status: 404,
-      });
-    }
-
-    return new Response("An unknown error has occurred.", { status: 500 });
-  }
-};
-```
+#### [View in Playground Editor](https://dash.deno.com/playground/targadactyl-serve)
