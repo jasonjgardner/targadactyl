@@ -500,9 +500,6 @@ export class TgaLoader {
 
     const imageData = ctx.createImageData(width, height);
 
-    canvas.width = width;
-    canvas.height = height;
-
     ctx.putImageData(this.getImageData(imageData), 0, 0);
 
     return canvas;
