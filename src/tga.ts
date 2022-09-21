@@ -1,6 +1,7 @@
 import { type TgaHeader, TgaOrigin, TgaType } from "./types.ts";
 import {
   createCanvas,
+  decode,
   type EmulatedCanvas2D,
   type ImageData,
 } from "../deps.ts";
@@ -468,6 +469,32 @@ export class TgaLoader {
       );
     }
     return new Uint8ClampedArray(await Deno.readFile(path));
+  }
+
+  /**
+   * Helper method for decoding the TGA file as an `Uint8Array`. Useful for serving the image.
+   *
+   * @example ```ts
+   *  const tga = new TgaLoader();
+   *  const contentType = "image/png";
+   *  const res = new Response(
+   *    tga.load(await tga.open("./test.tga")).decode(contentType),
+   *    {
+   *      status: 200,
+   *      headers: {
+   *       "Content-Type": contentType
+   *      }
+   *    }
+   *  );
+   *
+   *  // Now serve it!
+   * ```
+   *
+   * @param contentType Specify the MIME type to use in decoding and serving
+   * @returns {Uint8Array} .tga data decoded in the specified MIME type
+   */
+  decode(contentType: "image/png" | "image/jpeg"): Uint8Array {
+    return decode(this.getDataURL(contentType).split(",")[1]);
   }
 
   /**

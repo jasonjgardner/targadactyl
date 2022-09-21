@@ -20,7 +20,7 @@ prior to the method call.
 (Requires read permission.)
 
 ```ts
-import TgaLoader from "https://deno.land/x/targadactyl@1.0.1/mod.ts";
+import TgaLoader from "https://deno.land/x/targadactyl/mod.ts";
 
 const tga = new TgaLoader();
 
@@ -34,7 +34,7 @@ tga.load(
 (Requires network permission.)
 
 ```ts
-import TgaLoader from "https://deno.land/x/targadactyl@1.0.1/mod.ts";
+import TgaLoader from "https://deno.land/x/targadactyl/mod.ts";
 
 const tga = new TgaLoader();
 const src = new URL("https://raw.githubusercontent.com/jasonjgardner/targadactyl/main/test/test.tga");
