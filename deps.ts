@@ -2,9 +2,9 @@ import { Canvas } from "skia-canvas";
 
 export { ImageData, ExportFormat } from "skia-canvas";
 export { Canvas };
-export const createCanvas = (
+export const createCanvas: (width: number, height: number) => Canvas = (
   width: number,
-  height: number,
+  height: number
 ) => new Canvas(width, height);
 
 export type EmulatedCanvas2D = ReturnType<typeof createCanvas>;
