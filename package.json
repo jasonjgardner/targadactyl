@@ -27,10 +27,22 @@
     "targa",
     "image",
     "loader",
-    "canvas"
+    "canvas",
+    "decoder",
+    "node",
+    "bun",
+    "skia"
   ],
-  "author": "",
+  "author": "jason",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasonjgardner/targadactyl.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jasonjgardner/targadactyl/issues"
+  },
+  "homepage": "https://github.com/jasonjgardner/targadactyl#readme",
   "dependencies": {
     "skia-canvas": "^3.0.8"
   },
