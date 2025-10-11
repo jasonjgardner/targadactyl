@@ -24,16 +24,9 @@
   },
   "keywords": [
     "tga",
-    "targa",
-    "image",
-    "loader",
-    "canvas",
-    "decoder",
-    "node",
-    "bun",
-    "skia"
+    "targa"
   ],
-  "author": "jason",
+  "author": "-jason",
   "license": "MIT",
   "repository": {
     "type": "git",
