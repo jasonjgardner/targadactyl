@@ -1,0 +1,44 @@
+{
+  "name": "targadactyl",
+  "version": "2.0.0",
+  "description": "TGA (Targa) image loader for Node.js and Bun",
+  "type": "module",
+  "main": "./dist/mod.js",
+  "types": "./dist/mod.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/mod.js",
+      "types": "./dist/mod.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "test": "npm run build && node --test dist/src/tga_test.js",
+    "build": "tsc",
+    "clean": "node -e \"require('fs').rmSync('dist', {recursive: true, force: true})\"",
+    "prebuild": "npm run clean",
+    "prepublishOnly": "npm run build",
+    "example": "npm run build && node examples/basic-usage.js"
+  },
+  "keywords": [
+    "tga",
+    "targa",
+    "image",
+    "loader",
+    "canvas"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "skia-canvas": "^3.0.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
