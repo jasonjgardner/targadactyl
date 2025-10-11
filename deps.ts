@@ -1,6 +1,7 @@
 import { Canvas } from "skia-canvas";
 
-export { ImageData, ExportFormat } from "skia-canvas";
+export { ImageData } from "skia-canvas";
+export type { ExportFormat } from "skia-canvas";
 export { Canvas };
 export const createCanvas: (width: number, height: number) => Canvas = (
   width: number,
