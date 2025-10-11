@@ -1,12 +1,8 @@
-import { pathToFileURL } from "https://deno.land/std@0.156.0/node/url.ts";
-import {
-  assertMatch,
-  assertNotEquals,
-  assertObjectMatch,
-  assertRejects,
-} from "https://deno.land/std@0.156.0/testing/asserts.ts";
-import { type TgaHeader, TgaType } from "./types.ts";
-import { TgaLoader, TgaLoaderError } from "../mod.ts";
+import { pathToFileURL } from "node:url";
+import { test } from "node:test";
+import assert from "node:assert";
+import { type TgaHeader, TgaType } from "./types.js";
+import { TgaLoader, TgaLoaderError } from "../mod.js";
 
 const expects: Record<string, TgaHeader> = {
   "./test/test.tga": {
@@ -96,24 +92,24 @@ const expects: Record<string, TgaHeader> = {
   },
 };
 
-Deno.test("Open and load a TGA file to inspect its header data.", {
-  permissions: { read: true },
-}, async () => {
+test("Open and load a TGA file to inspect its header data.", async () => {
   for (const testFile in expects) {
     const tga = new TgaLoader();
     tga.load(await tga.open(testFile));
 
-    assertNotEquals(tga.imageData, undefined, testFile);
+    assert.notEqual(tga.imageData, undefined, testFile);
 
-    assertObjectMatch(tga.header, expects[testFile]);
+    // Check that header matches expected values
+    for (const [key, value] of Object.entries(expects[testFile])) {
+      assert.equal(tga.header[key as keyof TgaHeader], value, 
+        `${testFile}: ${key} should be ${value}`);
+    }
 
-    assertMatch(tga.getDataURL(), /^data:image\/(png|jpeg);base64,.+/gi);
+    assert.match(tga.getDataURL(), /^data:image\/(png|jpeg);base64,.+/i);
   }
 });
 
-Deno.test("Fetch and load a TGA file to inspect its header data", {
-  permissions: { read: true, net: true },
-}, async () => {
+test("Fetch and load a TGA file to inspect its header data", async () => {
   for (const testFile in expects) {
     const tga = new TgaLoader();
 
@@ -121,29 +117,23 @@ Deno.test("Fetch and load a TGA file to inspect its header data", {
       await tga.fetch(pathToFileURL(testFile)),
     );
 
-    assertNotEquals(tga.imageData, undefined, testFile);
+    assert.notEqual(tga.imageData, undefined, testFile);
 
-    assertObjectMatch(tga.header, expects[testFile]);
+    // Check that header matches expected values
+    for (const [key, value] of Object.entries(expects[testFile])) {
+      assert.equal(tga.header[key as keyof TgaHeader], value, 
+        `${testFile}: ${key} should be ${value}`);
+    }
 
-    assertMatch(tga.getDataURL(), /^data:image\/(png|jpeg);base64,.+/gi);
+    assert.match(tga.getDataURL(), /^data:image\/(png|jpeg);base64,.+/i);
   }
 });
 
-const src = pathToFileURL(Object.keys(expects)[0]);
-
-Deno.test("Throw error when lacking Deno permissions", {
-  permissions: {
-    read: false,
-    net: false,
-  },
-}, () => {
-  assertRejects(
+test("Throw error when file does not exist", async () => {
+  await assert.rejects(
     async () => {
       const tga = new TgaLoader();
-
-      tga.load(
-        await tga.fetch(src),
-      );
+      await tga.open("./test/nonexistent.tga");
     },
     TgaLoaderError,
   );

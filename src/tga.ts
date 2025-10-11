@@ -1,11 +1,14 @@
-import { type TgaHeader, TgaOrigin, TgaType } from "./types.ts";
+import { type TgaHeader, TgaOrigin, TgaType } from "./types.js";
 import {
   createCanvas,
   decode,
   type EmulatedCanvas2D,
-  type ImageData,
-} from "../deps.ts";
-import { TgaLoaderError, TgaLoaderReferenceError } from "./errors.ts";
+  type ExportFormat,
+  ImageData,
+} from "../deps.js";
+import { TgaLoaderError, TgaLoaderReferenceError } from "./errors.js";
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 
 /**
  * Loads local or remote TGA files into a canvas rendering context.
@@ -408,40 +411,42 @@ export class TgaLoader {
    * ```
    *
    * @param uri URL of TGA file
-   * @throws {TgaLoaderError} Thrown if Deno does not have permission to access URL over network. Read permissions are required for file protocol URLs
+   * @throws {TgaLoaderError} Thrown if fetch fails or if file protocol URL cannot be read
    * @returns TGA data
    */
   async fetch(uri: URL): Promise<Uint8ClampedArray> {
     if (uri.protocol === "file:") {
-      const readPermission = await Deno.permissions.query({
-        name: "read",
-        path: uri.pathname.substring(1),
-      });
-      if (readPermission.state !== "granted") {
+      // Handle file:// URLs by reading from filesystem
+      const path = fileURLToPath(uri);
+      try {
+        const buffer = await readFile(path);
+        return new Uint8ClampedArray(buffer);
+      } catch (err) {
         throw new TgaLoaderError(
-          `Can not load file without read permission to path: "${uri.pathname}"`,
-        );
-      }
-    } else {
-      const netPermission = await Deno.permissions.query({
-        name: "net",
-        host: uri.host,
-      });
-
-      if (netPermission.state !== "granted") {
-        throw new TgaLoaderError(
-          `Can not fetch file without network access permission to host: "${uri.host}"`,
+          `Can not load file from path: "${path}". ${(err as Error).message}`,
         );
       }
     }
-    const res = await fetch(
-      uri.href,
-    );
-    return new Uint8ClampedArray(await res.arrayBuffer());
+    
+    // Handle http/https URLs
+    try {
+      const res = await fetch(uri.href);
+      if (!res.ok) {
+        throw new TgaLoaderError(
+          `Failed to fetch from "${uri.href}": ${res.status} ${res.statusText}`,
+        );
+      }
+      return new Uint8ClampedArray(await res.arrayBuffer());
+    } catch (err) {
+      if (err instanceof TgaLoaderError) throw err;
+      throw new TgaLoaderError(
+        `Failed to fetch from "${uri.href}": ${(err as Error).message}`,
+      );
+    }
   }
 
   /**
-   * Open local TGA file. Requires read permissions.
+   * Open local TGA file.
    *
    * @example ```ts
    * const tga = new TgaLoader();
@@ -452,23 +457,24 @@ export class TgaLoader {
    *    await tga.open(src)
    *  );
    * } catch (err) {
-   *  // Catch Deno read errors or TgaLoaderError
+   *  // Catch file system errors or TgaLoaderError
    * }
    *
    * // TGA data has been initialized! 🍾
    * ```
    * @param path Filesystem path to .tga file
-   * @throws {TgaLoaderError} Thrown if Deno does not have read permission to the path specified
+   * @throws {TgaLoaderError} Thrown if file cannot be read
    * @returns TGA data
    */
   async open(path: string): Promise<Uint8ClampedArray> {
-    const readPermission = await Deno.permissions.query({ name: "read", path });
-    if (readPermission.state !== "granted") {
+    try {
+      const buffer = await readFile(path);
+      return new Uint8ClampedArray(buffer);
+    } catch (err) {
       throw new TgaLoaderError(
-        `Can not load file without read permission to path: "${path}"`,
+        `Can not load file from path: "${path}". ${(err as Error).message}`,
       );
     }
-    return new Uint8ClampedArray(await Deno.readFile(path));
   }
 
   /**
@@ -493,7 +499,7 @@ export class TgaLoader {
    * @param contentType Specify the MIME type to use in decoding and serving
    * @returns {Uint8Array} .tga data decoded in the specified MIME type
    */
-  decode(contentType: "image/png" | "image/jpeg"): Uint8Array {
+  decode(contentType: ExportFormat): Uint8Array {
     return decode(this.getDataURL(contentType).split(",")[1]);
   }
 
@@ -680,11 +686,7 @@ export class TgaLoader {
     const data = this.getImageData(imageData);
 
     ctx.putImageData(
-      {
-        data,
-        width,
-        height,
-      },
+      new ImageData(data, width, height),
       0,
       0,
       0,
@@ -702,7 +704,7 @@ export class TgaLoader {
    * @param type PNG or JPEG MIME type to use
    * @returns {string} Returns TGA image as base64-encoded data URI
    */
-  getDataURL(type?: "image/png" | "image/jpeg"): string {
-    return this.getCanvas().toDataURL(type ?? "image/png");
+  getDataURL(type?: ExportFormat): string {
+    return this.getCanvas().toDataURL(type ?? "png")
   }
 }
