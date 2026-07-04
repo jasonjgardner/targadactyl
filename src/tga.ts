@@ -1,4 +1,9 @@
-import { type TgaHeader, TgaOrigin, TgaType } from "./types.js";
+import {
+  type TgaHeader,
+  type TgaImageSource,
+  TgaOrigin,
+  TgaType,
+} from "./types.js";
 import {
   createCanvas,
   decode,
@@ -589,11 +594,10 @@ export class TgaLoader {
   /**
    * Get `ImageData` interface for the TGA
    * @todo Use header offsets in determining origin. ([See TODO in tga-js source.](https://github.com/vthibault/tga.js/blob/4877572f33058053adb3a892684fb3f822885bd9/src/tga.js#L516))
-   * @param imageData TGA pixel data interface
    * @throws {TgaLoaderReferenceError} Thrown when method has been called without loading data via the class's `load` method
    * @returns {Uint8ClampedArray} TGA byte data
    */
-  private getImageData(imageData?: ImageData): Uint8ClampedArray {
+  private getImageData(): Uint8ClampedArray {
     if (!this.header || !this.imageData) {
       throw new TgaLoaderReferenceError("Can not get image data.");
     }
@@ -601,11 +605,7 @@ export class TgaLoader {
     const { width, height, flags, pixelDepth, isGreyColor } = this.header;
     const origin = (flags & TgaOrigin.ORIGIN_MASK) >> TgaOrigin.ORIGIN_SHIFT;
 
-    if (!imageData) {
-      const canvas = createCanvas(width, height);
-      const ctx = canvas.getContext("2d");
-      imageData = ctx.createImageData(width, height);
-    }
+    const data = new Uint8ClampedArray(width * height * 4);
 
     let yStart = height - 1;
     let yStep = -1;
@@ -634,7 +634,7 @@ export class TgaLoader {
     }
 
     const params = [
-      imageData.data,
+      data,
       this.imageData,
       <Uint8ClampedArray> this.palette,
       width,
@@ -664,6 +664,19 @@ export class TgaLoader {
   }
 
   /**
+   * Get the decoded image as top-down RGBA pixels, independent of any
+   * canvas implementation. This is the bridge into `TgaWriter.fromLoader`.
+   *
+   * @throws {TgaLoaderReferenceError} Thrown when called before `load`
+   * @returns {TgaImageSource} Decoded RGBA pixel data with dimensions
+   */
+  getRGBA(): TgaImageSource {
+    const { width, height } = this.header;
+
+    return { data: this.getImageData(), width, height };
+  }
+
+  /**
    * Returns a canvas containing the TGA image
    * @uses createCanvas https://doc.deno.land/https://deno.land/x/canvas@v1.4.1/mod.ts/~/createCanvas
    * @see https://doc.deno.land/https://deno.land/x/canvas@v1.4.1/mod.ts Module docs
@@ -682,11 +695,8 @@ export class TgaLoader {
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext("2d");
 
-    const imageData = ctx.createImageData(width, height);
-    const data = this.getImageData(imageData);
-
     ctx.putImageData(
-      new ImageData(data, width, height),
+      new ImageData(this.getImageData(), width, height),
       0,
       0,
       0,

@@ -36,3 +36,27 @@ export type TgaHeader = {
   hasColorMap: boolean;
   isGreyColor: boolean;
 };
+
+/**
+ * Minimal structural shape of an RGBA image. Browser `ImageData`,
+ * skia-canvas `ImageData`, and plain objects all satisfy it, so encoding
+ * never requires a specific canvas implementation.
+ */
+export type TgaImageSource = {
+  /** RGBA pixel bytes, 4 per pixel, rows ordered top-down */
+  data: Uint8ClampedArray;
+  /** Image width in pixels */
+  width: number;
+  /** Image height in pixels */
+  height: number;
+};
+
+/**
+ * Options controlling `TgaWriter` output.
+ */
+export type TgaWriterOptions = {
+  /** Output pixel depth: 24 (BGR) or 32 (BGRA). Defaults to 32. */
+  bitDepth?: 24 | 32;
+  /** Run-length encode the pixel data (image type 10). Defaults to false. */
+  rle?: boolean;
+};
