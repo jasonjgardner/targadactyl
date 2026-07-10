@@ -23,3 +23,17 @@ export class TgaLoaderReferenceError extends ReferenceError {
     super(`TGA file data has not been initialized. ${msg}`.trim());
   }
 }
+
+/**
+ * General error thrown by TgaWriter class for invalid input or failed
+ * file writes.
+ */
+export class TgaWriterError extends Error {
+  /**
+   * Construct an error message with details
+   * @param msg Error details
+   */
+  constructor(msg: string) {
+    super(`Failed writing TGA: "${msg}"`);
+  }
+}
