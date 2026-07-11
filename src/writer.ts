@@ -12,6 +12,11 @@ import { TgaWriterError } from "./errors.js";
 const TGA_HEADER_SIZE = 0x12;
 
 /**
+ * Maximum pixels a single RLE packet (run or raw) can carry.
+ */
+const RLE_MAX_PACKET = 128;
+
+/**
  * Writer options with defaults applied.
  */
 type ResolvedWriterOptions = Required<TgaWriterOptions>;
@@ -74,6 +79,121 @@ const toBGR = (
   }
 
   return output;
+};
+
+/**
+ * Compare two pixels within TGA-ordered pixel data.
+ *
+ * @param data Pixel bytes in file order
+ * @param a Byte offset of the first pixel
+ * @param b Byte offset of the second pixel
+ * @param pixelSize Bytes per pixel
+ * @returns {boolean} True when every byte of both pixels matches
+ */
+const pixelsEqual = (
+  data: Uint8ClampedArray,
+  a: number,
+  b: number,
+  pixelSize: number,
+): boolean => {
+  for (let i = 0; i < pixelSize; i++) {
+    if (data[a + i] !== data[b + i]) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+/**
+ * Measure how many consecutive identical pixels start at `offset`,
+ * bounded by the end of the scanline and the 128-pixel packet cap.
+ *
+ * @param data Pixel bytes in file order
+ * @param offset Byte offset of the first pixel of the candidate run
+ * @param rowEnd Exclusive byte offset where the scanline ends
+ * @param pixelSize Bytes per pixel
+ * @returns {number} Run length in pixels (at least 1)
+ */
+const runLength = (
+  data: Uint8ClampedArray,
+  offset: number,
+  rowEnd: number,
+  pixelSize: number,
+): number => {
+  let run = 1;
+
+  while (
+    run < RLE_MAX_PACKET &&
+    offset + run * pixelSize < rowEnd &&
+    pixelsEqual(data, offset, offset + run * pixelSize, pixelSize)
+  ) {
+    run++;
+  }
+
+  return run;
+};
+
+/**
+ * Run-length encode TGA-ordered pixel data one scanline at a time.
+ * Packets never cross scanline boundaries (spec recommendation; some
+ * readers require it). Runs of 2+ identical pixels become run packets
+ * (`0x80 | count-1` + one pixel); everything else accumulates into raw
+ * packets (`count-1` + count pixels). Both cap at 128 pixels.
+ *
+ * @param pixels BGR(A) pixel bytes from `toBGR`
+ * @param width Image width in pixels
+ * @param height Image height in pixels
+ * @param pixelSize Bytes per pixel: 3 or 4
+ * @returns {Uint8Array} RLE-compressed pixel data
+ */
+const encodeRLE = (
+  pixels: Uint8ClampedArray,
+  width: number,
+  height: number,
+  pixelSize: number,
+): Uint8Array => {
+  const bytes: number[] = [];
+  const rowBytes = width * pixelSize;
+
+  for (let row = 0; row < height; row++) {
+    const rowEnd = (row + 1) * rowBytes;
+    let pos = row * rowBytes;
+
+    while (pos < rowEnd) {
+      const run = runLength(pixels, pos, rowEnd, pixelSize);
+
+      if (run > 1) {
+        bytes.push(0x80 | (run - 1));
+
+        for (let i = 0; i < pixelSize; i++) {
+          bytes.push(pixels[pos + i]);
+        }
+
+        pos += run * pixelSize;
+        continue;
+      }
+
+      const rawStart = pos;
+      let count = 0;
+
+      while (
+        pos < rowEnd && count < RLE_MAX_PACKET &&
+        runLength(pixels, pos, rowEnd, pixelSize) === 1
+      ) {
+        count++;
+        pos += pixelSize;
+      }
+
+      bytes.push(count - 1);
+
+      for (let i = rawStart; i < pos; i++) {
+        bytes.push(pixels[i]);
+      }
+    }
+  }
+
+  return Uint8Array.from(bytes);
 };
 
 /**
@@ -148,7 +268,10 @@ export class TgaWriter {
     const pixelSize = this.options.bitDepth === 32 ? 4 : 3;
 
     const header = buildHeader(width, height, this.options);
-    const body = toBGR(data, pixelSize);
+    const bgr = toBGR(data, pixelSize);
+    const body = this.options.rle
+      ? encodeRLE(bgr, width, height, pixelSize)
+      : bgr;
 
     const output = new Uint8Array(header.length + body.length);
     output.set(header, 0);

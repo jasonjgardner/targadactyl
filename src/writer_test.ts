@@ -111,3 +111,90 @@ test("constructor rejects invalid input", () => {
     "invalid bit depth",
   );
 });
+
+test("RLE header sets image type 10", () => {
+  const bytes = new TgaWriter(
+    { data: pixels2x2, width: 2, height: 2 },
+    { rle: true },
+  ).encode();
+
+  assert.equal(bytes[0x02], 10);
+  assert.equal(bytes[0x10], 32);
+  assert.equal(bytes[0x11], 0x28);
+});
+
+test("decoder round-trips RLE output", () => {
+  const combos = [
+    { bitDepth: 32, rle: true },
+    { bitDepth: 24, rle: true },
+  ] as const;
+
+  for (const options of combos) {
+    const bytes = new TgaWriter(
+      { data: pixels2x2, width: 2, height: 2 },
+      options,
+    ).encode();
+
+    const tga = new TgaLoader().load(new Uint8ClampedArray(bytes));
+
+    assert.deepEqual(
+      [...tga.getRGBA().data],
+      [...pixels2x2],
+      JSON.stringify(options),
+    );
+  }
+});
+
+test("RLE packets cap at 128 pixels and never cross scanlines", () => {
+  const width = 200;
+  const height = 3;
+  const solid = new Uint8ClampedArray(width * height * 4);
+
+  for (let i = 0; i < solid.length; i += 4) {
+    solid[i] = 12;
+    solid[i + 1] = 34;
+    solid[i + 2] = 56;
+    solid[i + 3] = 255;
+  }
+
+  const image = { data: solid, width, height };
+  const raw = new TgaWriter(image).encode();
+  const rle = new TgaWriter(image, { rle: true }).encode();
+
+  assert.ok(rle.length < raw.length, "RLE must shrink a solid image");
+
+  // Each 200px scanline = one 128px run packet + one 72px run packet,
+  // 5 bytes each (header + BGRA pixel); 3 rows. Packets crossing scanline
+  // boundaries would produce 5 packets total (25 bytes), not 6 (30 bytes).
+  const body = rle.subarray(18);
+  assert.equal(body.length, 3 * 2 * (1 + 4));
+  assert.equal(body[0], 0x80 | 127);
+  assert.deepEqual([...body.subarray(1, 5)], [56, 34, 12, 255]);
+  assert.equal(body[5 * 1], 0x80 | 71);
+
+  const decoded = new TgaLoader().load(new Uint8ClampedArray(rle));
+  assert.deepEqual([...decoded.getRGBA().data], [...solid]);
+});
+
+test("RLE emits raw packets for non-repeating pixels", () => {
+  // 4 distinct pixels in one row: expect a single raw packet
+  // header (count-1 = 3) followed by 4 BGRA pixels = 17 bytes.
+  const distinct = new Uint8ClampedArray([
+    1, 0, 0, 255,
+    2, 0, 0, 255,
+    3, 0, 0, 255,
+    4, 0, 0, 255,
+  ]);
+
+  const bytes = new TgaWriter(
+    { data: distinct, width: 4, height: 1 },
+    { rle: true },
+  ).encode();
+
+  const body = bytes.subarray(18);
+  assert.equal(body.length, 1 + 4 * 4);
+  assert.equal(body[0], 3);
+
+  const decoded = new TgaLoader().load(new Uint8ClampedArray(bytes));
+  assert.deepEqual([...decoded.getRGBA().data], [...distinct]);
+});
