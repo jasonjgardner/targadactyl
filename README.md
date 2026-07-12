@@ -65,6 +65,27 @@ tga.load(data);
 console.log(tga.header);
 ```
 
+### Writing TGA files
+
+```typescript
+import { TgaLoader, TgaWriter } from 'targadactyl';
+
+// Encode RGBA pixels (any ImageData works)
+const ctx = canvas.getContext('2d');
+const writer = new TgaWriter(ctx.getImageData(0, 0, width, height), {
+  bitDepth: 24, // 24 (BGR) or 32 (BGRA, default)
+  rle: true,    // run-length compression, default false
+});
+
+const bytes = writer.encode();   // Uint8Array of TGA file contents
+await writer.save('./out.tga');  // or write it to disk directly
+
+// Round-trip an existing TGA
+const tga = new TgaLoader();
+tga.load(await tga.open('./in.tga'));
+await TgaWriter.fromLoader(tga, { rle: true }).save('./copy.tga');
+```
+
 ## API
 
 ### `TgaLoader`
@@ -85,14 +106,33 @@ Main class for loading and decoding TGA files.
 - `header: TgaHeader` - TGA file header information
 - `imageData?: Uint8ClampedArray` - Raw image data
 - `palette?: Uint8ClampedArray` - Color palette (for indexed images)
+- `getRGBA(): TgaImageSource` - Get decoded top-down RGBA pixels (`{ data, width, height }`)
+
+### `TgaWriter`
+
+Encodes RGBA pixel data as TGA file bytes. Always writes top-left origin, true-color output.
+
+#### Methods
+
+- `constructor(image: TgaImageSource, options?: TgaWriterOptions)` - `image` is `{ data: Uint8ClampedArray, width: number, height: number }` (any `ImageData` qualifies); options are `bitDepth: 24 | 32` (default `32`) and `rle: boolean` (default `false`)
+- `encode(): Uint8Array` - Encode to complete TGA file bytes
+- `async save(path: string): Promise<void>` - Encode and write to disk
+- `static fromLoader(loader: TgaLoader, options?: TgaWriterOptions): TgaWriter` - Build a writer from a loaded `TgaLoader` for round-tripping
 
 ## Supported TGA Formats
+
+Reading:
 
 - Uncompressed RGB (8, 16, 24, 32 bit)
 - RLE-compressed RGB
 - Indexed color
 - Grayscale (8, 16 bit)
 - RLE-compressed grayscale
+
+Writing:
+
+- Uncompressed RGB (24, 32 bit)
+- RLE-compressed RGB (24, 32 bit)
 
 ## Development
 

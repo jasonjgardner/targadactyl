@@ -1,6 +1,6 @@
 {
   "name": "targadactyl",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "TGA (Targa) image loader for Node.js and Bun",
   "type": "module",
   "main": "./dist/mod.js",
