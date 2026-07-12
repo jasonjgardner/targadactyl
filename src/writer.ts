@@ -5,6 +5,8 @@ import {
   TgaType,
 } from "./types.js";
 import { TgaWriterError } from "./errors.js";
+import { writeFile } from "node:fs/promises";
+import type { TgaLoader } from "./tga.js";
 
 /**
  * Byte length of a v1.0 TGA header (no ID field, color map, or footer).
@@ -258,6 +260,27 @@ export class TgaWriter {
   }
 
   /**
+   * Create a writer from an already-loaded `TgaLoader` for round-tripping
+   * (load, modify, save). The loader's decoded RGBA pixels become the
+   * source image; indexed/grayscale/16-bit sources re-encode as true color.
+   *
+   * @example ```ts
+   * const tga = new TgaLoader();
+   * tga.load(await tga.open("./in.tga"));
+   * await TgaWriter.fromLoader(tga, { rle: true }).save("./out.tga");
+   * ```
+   *
+   * @param loader Loader whose `load` method has been called
+   * @param options Optional bit depth and RLE flag
+   * @throws {TgaLoaderReferenceError} Propagated from `getRGBA` when the
+   * loader has no data
+   * @returns {TgaWriter} Writer sourcing the loader's decoded pixels
+   */
+  static fromLoader(loader: TgaLoader, options?: TgaWriterOptions): TgaWriter {
+    return new TgaWriter(loader.getRGBA(), options);
+  }
+
+  /**
    * Encode the image as complete TGA file bytes: 18-byte header followed
    * by pixel data.
    *
@@ -278,5 +301,22 @@ export class TgaWriter {
     output.set(body, header.length);
 
     return output;
+  }
+
+  /**
+   * Encode and write the TGA file to disk. Counterpart to
+   * `TgaLoader.open`.
+   *
+   * @param path Filesystem destination for the .tga file
+   * @throws {TgaWriterError} Thrown when the file cannot be written
+   */
+  async save(path: string): Promise<void> {
+    try {
+      await writeFile(path, this.encode());
+    } catch (err) {
+      throw new TgaWriterError(
+        `Can not save file to path: "${path}". ${(err as Error).message}`,
+      );
+    }
   }
 }

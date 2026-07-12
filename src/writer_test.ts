@@ -1,5 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert";
+import { unlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { TgaLoader, TgaWriter, TgaWriterError } from "../mod.js";
 
 /**
@@ -197,4 +200,50 @@ test("RLE emits raw packets for non-repeating pixels", () => {
 
   const decoded = new TgaLoader().load(new Uint8ClampedArray(bytes));
   assert.deepEqual([...decoded.getRGBA().data], [...distinct]);
+});
+
+test("save() writes a file that reloads from disk", async () => {
+  const path = join(tmpdir(), `targadactyl-writer-${process.pid}.tga`);
+  const writer = new TgaWriter({ data: pixels2x2, width: 2, height: 2 });
+
+  try {
+    await writer.save(path);
+
+    const tga = new TgaLoader();
+    tga.load(await tga.open(path));
+
+    assert.deepEqual([...tga.getRGBA().data], [...pixels2x2]);
+  } finally {
+    await unlink(path);
+  }
+});
+
+test("save() wraps filesystem errors in TgaWriterError", async () => {
+  const writer = new TgaWriter({ data: pixels2x2, width: 2, height: 2 });
+
+  await assert.rejects(
+    () => writer.save("./no-such-dir/out.tga"),
+    TgaWriterError,
+  );
+});
+
+test("fromLoader() round-trips every fixture", async () => {
+  const fixtures = [
+    "./test/test.tga",
+    "./test/test_16.tga",
+    "./test/test_24.tga",
+    "./test/test_32.tga",
+    "./test/test_rle.tga",
+  ];
+
+  for (const file of fixtures) {
+    const original = new TgaLoader();
+    original.load(await original.open(file));
+    const source = original.getRGBA();
+
+    const bytes = TgaWriter.fromLoader(original).encode();
+    const reloaded = new TgaLoader().load(new Uint8ClampedArray(bytes));
+
+    assert.deepEqual([...reloaded.getRGBA().data], [...source.data], file);
+  }
 });
