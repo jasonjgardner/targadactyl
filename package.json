@@ -12,7 +12,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "llms.txt"
   ],
   "scripts": {
     "test": "npm run build && node --test dist/src/tga_test.js dist/src/writer_test.js",
