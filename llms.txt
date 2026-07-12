@@ -1,0 +1,24 @@
+# Targadactyl
+
+> TGA (Targa) image loader and writer for Node.js and Bun. Decodes 8/16/24/32-bit true-color, indexed, grayscale, and RLE-compressed TGA files into RGBA pixel data or canvas contexts; encodes RGBA pixel data to 24/32-bit TGA files with optional RLE compression.
+
+Published as `targadactyl` on npm and `@jjg/targadactyl` on JSR. ESM-only; requires Node.js >= 18 or Bun. The only runtime dependency is skia-canvas, used solely for PNG/JPEG export — TGA decoding and encoding are dependency-free.
+
+Key API: `TgaLoader` (`open`, `fetch`, `load`, `getRGBA`, `getCanvas`, `getDataURL`, `decode`) and `TgaWriter` (`encode`, `save`, `TgaWriter.fromLoader`). Any `ImageData`-shaped object (`{ data, width, height }`) can be encoded.
+
+## Documentation
+
+- [README](https://github.com/jasonjgardner/targadactyl/blob/main/README.md): Installation, usage examples, and full API reference
+- [CHANGELOG](https://github.com/jasonjgardner/targadactyl/blob/main/CHANGELOG.md): Version history and breaking changes
+
+## Source
+
+- [mod.ts](https://github.com/jasonjgardner/targadactyl/blob/main/mod.ts): Public entry point and exports
+- [src/tga.ts](https://github.com/jasonjgardner/targadactyl/blob/main/src/tga.ts): TgaLoader — TGA decoding
+- [src/writer.ts](https://github.com/jasonjgardner/targadactyl/blob/main/src/writer.ts): TgaWriter — TGA encoding
+- [src/types.ts](https://github.com/jasonjgardner/targadactyl/blob/main/src/types.ts): Header type, enums, and writer options
+
+## Optional
+
+- [TGA file format specification](https://www.gamers.org/dEngine/quake3/TGA.txt): Third-party reference for the Targa format
+- [LICENSE](https://github.com/jasonjgardner/targadactyl/blob/main/LICENSE): MIT license text

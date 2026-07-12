@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-07-04
+
+### Added
+- `TgaWriter` class for encoding RGBA pixel data as TGA files (24/32-bit, optional per-scanline RLE compression, top-left origin)
+- `TgaWriter.save(path)` for writing encoded TGA files to disk
+- `TgaWriter.fromLoader(loader)` for round-tripping loaded TGA files
+- `TgaLoader.getRGBA()` public accessor returning decoded top-down RGBA pixels
+- `TgaWriterError`, `TgaWriterOptions`, and `TgaImageSource` exports
+
+### Changed
+- Decoding no longer allocates a throwaway canvas when building pixel data; skia-canvas is only used for PNG/JPEG export
+
 ## [2.0.0] - 2024
 
 ### Changed

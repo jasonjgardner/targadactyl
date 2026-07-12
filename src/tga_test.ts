@@ -2,7 +2,11 @@ import { pathToFileURL } from "node:url";
 import { test } from "node:test";
 import assert from "node:assert";
 import { type TgaHeader, TgaType } from "./types.js";
-import { TgaLoader, TgaLoaderError } from "../mod.js";
+import {
+  TgaLoader,
+  TgaLoaderError,
+  TgaLoaderReferenceError,
+} from "../mod.js";
 
 const expects: Record<string, TgaHeader> = {
   "./test/test.tga": {
@@ -137,4 +141,23 @@ test("Throw error when file does not exist", async () => {
     },
     TgaLoaderError,
   );
+});
+
+test("getRGBA() returns decoded top-down RGBA pixels", async () => {
+  const tga = new TgaLoader();
+  tga.load(await tga.open("./test/test_24.tga"));
+
+  const { data, width, height } = tga.getRGBA();
+
+  assert.equal(width, 256);
+  assert.equal(height, 256);
+  assert.equal(data.length, 256 * 256 * 4);
+  assert.ok(
+    data.every((_value: number, i: number) => i % 4 !== 3 || data[i] === 255),
+    "24-bit source must decode to fully opaque alpha",
+  );
+});
+
+test("getRGBA() throws before load()", () => {
+  assert.throws(() => new TgaLoader().getRGBA(), TgaLoaderReferenceError);
 });
