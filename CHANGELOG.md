@@ -13,9 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TgaWriter.fromLoader(loader)` for round-tripping loaded TGA files
 - `TgaLoader.getRGBA()` public accessor returning decoded top-down RGBA pixels
 - `TgaWriterError`, `TgaWriterOptions`, and `TgaImageSource` exports
+- Subpath exports for browser-friendly imports: `targadactyl/writer`, `targadactyl/loader`, `targadactyl/types`, and `targadactyl/errors` (npm and JSR)
 
 ### Changed
 - Decoding no longer allocates a throwaway canvas when building pixel data; skia-canvas is only used for PNG/JPEG export
+- `TgaWriter.save()` imports `node:fs/promises` lazily, so `targadactyl/writer` bundles cleanly for the browser when only `encode()` is used
+- Declared `sideEffects: false` for bundler tree-shaking
 
 ## [2.0.0] - 2024
 

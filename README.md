@@ -86,6 +86,22 @@ tga.load(await tga.open('./in.tga'));
 await TgaWriter.fromLoader(tga, { rle: true }).save('./copy.tga');
 ```
 
+### Browser usage
+
+`TgaWriter` has no runtime dependencies — import it via the `targadactyl/writer` subpath so bundlers skip `TgaLoader` and its skia-canvas/Node dependencies entirely:
+
+```typescript
+import { TgaWriter } from 'targadactyl/writer';
+
+const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+const bytes = new TgaWriter(imageData, { rle: true }).encode();
+
+const blob = new Blob([bytes], { type: 'image/x-tga' });
+// e.g. offer the blob as a download or upload it
+```
+
+`targadactyl/types` and `targadactyl/errors` are likewise dependency-free. Only `save()` touches Node APIs (imported lazily) — use `encode()` in the browser. The root import and `targadactyl/loader` require Node.js or Bun.
+
 ## API
 
 ### `TgaLoader`
@@ -100,13 +116,13 @@ Main class for loading and decoding TGA files.
 - `getCanvas(): EmulatedCanvas2D` - Get a canvas containing the decoded TGA image
 - `getDataURL(type?: 'image/png' | 'image/jpeg'): string` - Get the image as a base64-encoded data URL
 - `decode(contentType: 'image/png' | 'image/jpeg'): Uint8Array` - Decode the TGA to PNG or JPEG format
+- `getRGBA(): TgaImageSource` - Get decoded top-down RGBA pixels (`{ data, width, height }`)
 
 #### Properties
 
 - `header: TgaHeader` - TGA file header information
 - `imageData?: Uint8ClampedArray` - Raw image data
 - `palette?: Uint8ClampedArray` - Color palette (for indexed images)
-- `getRGBA(): TgaImageSource` - Get decoded top-down RGBA pixels (`{ data, width, height }`)
 
 ### `TgaWriter`
 
