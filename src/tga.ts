@@ -227,9 +227,9 @@ export class TgaLoader {
         const color = pixels[i + 0] | (pixels[i + 1] << 8);
         const offset = (x + width * y) * 4;
         imageData[offset] = (color & 0x7c00) >> 7;
-        imageData[offset * 4 + 1] = (color & 0x03e0) >> 2;
-        imageData[offset * 4 + 2] = (color & 0x001f) >> 3;
-        imageData[offset * 4 + 3] = color & 0x8000 ? 0 : 255;
+        imageData[offset + 1] = (color & 0x03e0) >> 2;
+        imageData[offset + 2] = (color & 0x001f) << 3;
+        imageData[offset + 3] = color & 0x8000 ? 0 : 255;
       }
     }
 
