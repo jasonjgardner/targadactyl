@@ -161,3 +161,23 @@ test("getRGBA() returns decoded top-down RGBA pixels", async () => {
 test("getRGBA() throws before load()", () => {
   assert.throws(() => new TgaLoader().getRGBA(), TgaLoaderReferenceError);
 });
+
+test("decodes 16-bit ARGB1555 pixels into all four RGBA channels", () => {
+  // Synthetic 2x1 uncompressed 16-bit TGA, top-left origin:
+  // pure blue (0x001F) then pure red (0x7C00), little-endian.
+  const header = [0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 1, 0, 16, 0x20];
+  const pixels = [0x1f, 0x00, 0x00, 0x7c];
+  const tga = new TgaLoader().load(
+    new Uint8ClampedArray([...header, ...pixels]),
+  );
+
+  const { data } = tga.getRGBA();
+
+  assert.deepEqual(
+    [...data],
+    [
+      0, 0, 248, 255, // blue: 5-bit 31 scales to 31 << 3
+      248, 0, 0, 255, // red: second pixel must land at offset 4, not 17
+    ],
+  );
+});
