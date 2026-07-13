@@ -2,5 +2,11 @@
     "name": "@jjg/targadactyl",
     "version": "2.1.0",
     "license": "MIT",
-    "exports": "./mod.ts"
+    "exports": {
+        ".": "./mod.ts",
+        "./writer": "./src/writer.ts",
+        "./loader": "./src/tga.ts",
+        "./types": "./src/types.ts",
+        "./errors": "./src/errors.ts"
+    }
 }

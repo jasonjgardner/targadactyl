@@ -3,12 +3,29 @@
   "version": "2.1.0",
   "description": "TGA (Targa) image loader for Node.js and Bun",
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/mod.js",
   "types": "./dist/mod.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/mod.js",
-      "types": "./dist/mod.d.ts"
+      "types": "./dist/mod.d.ts",
+      "import": "./dist/mod.js"
+    },
+    "./writer": {
+      "types": "./dist/src/writer.d.ts",
+      "import": "./dist/src/writer.js"
+    },
+    "./loader": {
+      "types": "./dist/src/tga.d.ts",
+      "import": "./dist/src/tga.js"
+    },
+    "./types": {
+      "types": "./dist/src/types.d.ts",
+      "import": "./dist/src/types.js"
+    },
+    "./errors": {
+      "types": "./dist/src/errors.d.ts",
+      "import": "./dist/src/errors.js"
     }
   },
   "files": [

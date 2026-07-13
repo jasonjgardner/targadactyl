@@ -5,7 +5,6 @@ import {
   TgaType,
 } from "./types.js";
 import { TgaWriterError } from "./errors.js";
-import { writeFile } from "node:fs/promises";
 import type { TgaLoader } from "./tga.js";
 
 /**
@@ -305,13 +304,16 @@ export class TgaWriter {
 
   /**
    * Encode and write the TGA file to disk. Counterpart to
-   * `TgaLoader.open`.
+   * `TgaLoader.open`. `node:fs/promises` is imported lazily here — the
+   * only Node-specific dependency in this module — so bundling this
+   * module for the browser stays safe as long as `save` is never called.
    *
    * @param path Filesystem destination for the .tga file
    * @throws {TgaWriterError} Thrown when the file cannot be written
    */
   async save(path: string): Promise<void> {
     try {
+      const { writeFile } = await import("node:fs/promises");
       await writeFile(path, this.encode());
     } catch (err) {
       throw new TgaWriterError(
