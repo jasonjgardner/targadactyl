@@ -1,6 +1,6 @@
 {
   "name": "targadactyl",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "TGA (Targa) image loader for Node.js and Bun",
   "type": "module",
   "sideEffects": false,
@@ -10,6 +10,10 @@
     ".": {
       "types": "./dist/mod.d.ts",
       "import": "./dist/mod.js"
+    },
+    "./reader": {
+      "types": "./dist/src/reader.d.ts",
+      "import": "./dist/src/reader.js"
     },
     "./writer": {
       "types": "./dist/src/writer.d.ts",
@@ -33,7 +37,7 @@
     "llms.txt"
   ],
   "scripts": {
-    "test": "npm run build && node --test dist/src/tga_test.js dist/src/writer_test.js",
+    "test": "npm run build && node --test dist/src/tga_test.js dist/src/writer_test.js dist/src/reader_test.js",
     "build": "tsc",
     "clean": "node -e \"require('fs').rmSync('dist', {recursive: true, force: true})\"",
     "prebuild": "npm run clean",

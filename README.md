@@ -88,34 +88,38 @@ await TgaWriter.fromLoader(tga, { rle: true }).save('./copy.tga');
 
 ### Browser usage
 
-`TgaWriter` has no runtime dependencies — import it via the `targadactyl/writer` subpath so bundlers skip `TgaLoader` and its skia-canvas/Node dependencies entirely:
+Both reading and writing work in the browser through dependency-free subpaths — bundlers never see skia-canvas or Node builtins:
 
 ```typescript
+import { TgaReader } from 'targadactyl/reader';
 import { TgaWriter } from 'targadactyl/writer';
 
-const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-const bytes = new TgaWriter(imageData, { rle: true }).encode();
+// Read: decode a fetched TGA into RGBA pixels
+const reader = new TgaReader();
+reader.load(await reader.fetch(new URL('https://example.com/image.tga')));
+const { data, width, height } = reader.getRGBA();
+ctx.putImageData(new ImageData(data, width, height), 0, 0);
 
+// Write: encode canvas pixels as a TGA file
+const bytes = new TgaWriter(ctx.getImageData(0, 0, width, height), {
+  rle: true,
+}).encode();
 const blob = new Blob([bytes], { type: 'image/x-tga' });
-// e.g. offer the blob as a download or upload it
 ```
 
-`targadactyl/types` and `targadactyl/errors` are likewise dependency-free. Only `save()` touches Node APIs (imported lazily) — use `encode()` in the browser. The root import and `targadactyl/loader` require Node.js or Bun.
+`targadactyl/types` and `targadactyl/errors` are likewise dependency-free. Node-only functionality loads lazily (`open()`, `file://` fetches, `TgaWriter.save()`) or lives on `TgaLoader` (canvas output: `getCanvas`, `getDataURL`, `decode`), available from the root import or `targadactyl/loader` on Node.js/Bun.
 
 ## API
 
-### `TgaLoader`
+### `TgaReader`
 
-Main class for loading and decoding TGA files.
+Browser-safe TGA decoding (`targadactyl/reader`). Statically imports nothing but the package's own types and errors.
 
 #### Methods
 
-- `async open(path: string): Promise<Uint8ClampedArray>` - Load a TGA file from the filesystem
-- `async fetch(uri: URL): Promise<Uint8ClampedArray>` - Load a TGA file from a URL (supports `file://`, `http://`, and `https://` protocols)
-- `load(data: Uint8ClampedArray): TgaLoader` - Parse TGA data from a Uint8ClampedArray
-- `getCanvas(): EmulatedCanvas2D` - Get a canvas containing the decoded TGA image
-- `getDataURL(type?: 'image/png' | 'image/jpeg'): string` - Get the image as a base64-encoded data URL
-- `decode(contentType: 'image/png' | 'image/jpeg'): Uint8Array` - Decode the TGA to PNG or JPEG format
+- `async open(path: string): Promise<Uint8ClampedArray>` - Load a TGA file from the filesystem (Node.js/Bun; `node:fs` imported lazily)
+- `async fetch(uri: URL): Promise<Uint8ClampedArray>` - Load a TGA file from a URL (`http://`/`https://` in any runtime; `file://` on Node.js/Bun via lazy imports)
+- `load(data: Uint8ClampedArray): this` - Parse TGA data from a Uint8ClampedArray
 - `getRGBA(): TgaImageSource` - Get decoded top-down RGBA pixels (`{ data, width, height }`)
 
 #### Properties
@@ -123,6 +127,16 @@ Main class for loading and decoding TGA files.
 - `header: TgaHeader` - TGA file header information
 - `imageData?: Uint8ClampedArray` - Raw image data
 - `palette?: Uint8ClampedArray` - Color palette (for indexed images)
+
+### `TgaLoader`
+
+Extends `TgaReader` with canvas output via skia-canvas. Node.js/Bun only; available from the root import or `targadactyl/loader`.
+
+#### Methods
+
+- `getCanvas(): EmulatedCanvas2D` - Get a canvas containing the decoded TGA image
+- `getDataURL(type?: 'image/png' | 'image/jpeg'): string` - Get the image as a base64-encoded data URL
+- `decode(contentType: 'image/png' | 'image/jpeg'): Uint8Array` - Decode the TGA to PNG or JPEG format
 
 ### `TgaWriter`
 

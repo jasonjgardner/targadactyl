@@ -5,7 +5,7 @@ import {
   TgaType,
 } from "./types.js";
 import { TgaWriterError } from "./errors.js";
-import type { TgaLoader } from "./tga.js";
+import type { TgaReader } from "./reader.js";
 
 /**
  * Byte length of a v1.0 TGA header (no ID field, color map, or footer).
@@ -269,13 +269,13 @@ export class TgaWriter {
    * await TgaWriter.fromLoader(tga, { rle: true }).save("./out.tga");
    * ```
    *
-   * @param loader Loader whose `load` method has been called
+   * @param loader `TgaReader` (or `TgaLoader`) whose `load` method has been called
    * @param options Optional bit depth and RLE flag
    * @throws {TgaLoaderReferenceError} Propagated from `getRGBA` when the
    * loader has no data
    * @returns {TgaWriter} Writer sourcing the loader's decoded pixels
    */
-  static fromLoader(loader: TgaLoader, options?: TgaWriterOptions): TgaWriter {
+  static fromLoader(loader: TgaReader, options?: TgaWriterOptions): TgaWriter {
     return new TgaWriter(loader.getRGBA(), options);
   }
 

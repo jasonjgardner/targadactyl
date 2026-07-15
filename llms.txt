@@ -4,7 +4,7 @@
 
 Published as `targadactyl` on npm and `@jjg/targadactyl` on JSR. ESM-only; requires Node.js >= 18 or Bun. The only runtime dependency is skia-canvas, used solely for PNG/JPEG export — TGA decoding and encoding are dependency-free.
 
-Key API: `TgaLoader` (`open`, `fetch`, `load`, `getRGBA`, `getCanvas`, `getDataURL`, `decode`) and `TgaWriter` (`encode`, `save`, `TgaWriter.fromLoader`). Any `ImageData`-shaped object (`{ data, width, height }`) can be encoded.
+Key API: `TgaReader` (`open`, `fetch`, `load`, `getRGBA`; browser-safe via the `targadactyl/reader` subpath), `TgaLoader` (extends `TgaReader` with `getCanvas`, `getDataURL`, `decode`; Node/Bun), and `TgaWriter` (`encode`, `save`, `TgaWriter.fromLoader`; browser-safe via `targadactyl/writer`). Any `ImageData`-shaped object (`{ data, width, height }`) can be encoded.
 
 ## Documentation
 
@@ -14,7 +14,8 @@ Key API: `TgaLoader` (`open`, `fetch`, `load`, `getRGBA`, `getCanvas`, `getDataU
 ## Source
 
 - [mod.ts](https://github.com/jasonjgardner/targadactyl/blob/main/mod.ts): Public entry point and exports
-- [src/tga.ts](https://github.com/jasonjgardner/targadactyl/blob/main/src/tga.ts): TgaLoader — TGA decoding
+- [src/reader.ts](https://github.com/jasonjgardner/targadactyl/blob/main/src/reader.ts): TgaReader — browser-safe TGA decoding
+- [src/tga.ts](https://github.com/jasonjgardner/targadactyl/blob/main/src/tga.ts): TgaLoader — canvas output on top of TgaReader
 - [src/writer.ts](https://github.com/jasonjgardner/targadactyl/blob/main/src/writer.ts): TgaWriter — TGA encoding
 - [src/types.ts](https://github.com/jasonjgardner/targadactyl/blob/main/src/types.ts): Header type, enums, and writer options
 
