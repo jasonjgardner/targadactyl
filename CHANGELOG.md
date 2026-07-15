@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-07-06
+
+### Added
+- `TgaReader` class (`targadactyl/reader`): browser-safe, tree-shakable TGA decoding — header parsing, RLE decode, and `getRGBA()` with no canvas or Node dependencies in the static module graph
+- Regression test asserting the compiled `reader` and `writer` modules stay free of static Node/canvas imports
+
+### Changed
+- `TgaLoader` now extends `TgaReader`, adding only the skia-canvas output methods (`getCanvas`, `getDataURL`, `decode`); its public API is unchanged
+- `TgaReader.open()` and `file://` fetches import Node builtins lazily
+- `TgaWriter.fromLoader()` accepts any `TgaReader` (and therefore still accepts `TgaLoader`)
+- `load()` returns `this`, so chaining works on subclasses
+
 ## [2.1.1] - 2026-07-06
 
 ### Added
